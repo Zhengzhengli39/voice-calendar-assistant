@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>语音驱动日程助手 - Google Calendar自动化</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 基础样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* 容器 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 头部 */
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            font-size: 1.2rem;
+            color: #666;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* 主内容区域 */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 状态面板 */
+        .status-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .status-panel h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .status-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .status-good {
+            color: #28a745;
+        }
+
+        .status-warning {
+            color: #ffc107;
+        }
+
+        .status-error {
+            color: #dc3545;
+        }
+
+        .status-unknown {
+            color: #6c757d;
+        }
+
+        /* 控制面板 */
+        .control-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .control-panel h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 15px 25px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-weight: 600;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-3px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* 录音指示器 */
+        .recording-indicator {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            background: #dc3545;
+            color: white;
+            border-radius: 10px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+
+        .recording-dot {
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* 控制台面板 */
+        .console-panel {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .console-panel h2 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .console {
+            background: #1a1a1a;
+            color: #00ff9d;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .console-line {
+            margin-bottom: 5px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 事件列表 */
+        .events-panel {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+        }
+
+        .events-panel h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .events-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .event-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.3s ease;
+        }
+
+        .event-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .event-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .event-time {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .event-description {
+            color: #6c757d;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        /* 使用说明 */
+        .instructions {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+        }
+
+        .instructions h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #495057;
+        }
+
+        .instructions li {
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .instructions code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        /* 页脚 */
+        .footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            font-size: 0.9rem;
+        }
+
+        /* 音频播放器（隐藏） */
+        #audio-player {
+            display: none;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .header {
+                padding: 25px 20px;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .events-list {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn {
+                padding: 12px 20px;
+                font-size: 1rem;
+            }
+        }
+
+        /* 工具类 */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <h1><i class="fas fa-robot"></i> 语音驱动日程助手</h1>
+            <p class="subtitle">通过语音对话自动管理您的Google日历。使用Playwright进行浏览器自动化，无需API密钥。</p>
+        </header>
+
+        <!-- 主内容区域 -->
+        <main>
+            <div class="main-content">
+                <!-- 状态面板 -->
+                <div class="status-panel">
+                    <h2><i class="fas fa-heartbeat"></i> 系统状态</h2>
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <div class="status-label">后端服务</div>
+                            <div id="status-backend" class="status-value status-unknown">检查中...</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-label">语音功能</div>
+                            <div id="status-voice" class="status-value status-unknown">检查中...</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-label">日历连接</div>
+                            <div id="status-calendar" class="status-value status-unknown">检查中...</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="status-label">浏览器支持</div>
+                            <div id="status-browser" class="status-value status-unknown">检查中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 控制面板 -->
+                <div class="control-panel">
+                    <h2><i class="fas fa-gamepad"></i> 控制面板</h2>
+                    <div class="controls">
+                        <button id="btn-start-voice" class="btn btn-primary">
+                            <i class="fas fa-microphone"></i> 开始语音对话
+                        </button>
+                        
+                        <div id="recording-indicator" class="recording-indicator hidden">
+                            <div class="recording-dot"></div>
+                            <span>正在录音... 请说话</span>
+                        </div>
+                        
+                        <button id="btn-login-google" class="btn btn-secondary">
+                            <i class="fas fa-sign-in-alt"></i> 连接Google日历
+                        </button>
+                        
+                        <button id="btn-refresh" class="btn btn-secondary">
+                            <i class="fas fa-sync-alt"></i> 刷新状态
+                        </button>
+                        
+                        <button id="btn-test-voice" class="btn btn-secondary">
+                            <i class="fas fa-vial"></i> 测试语音识别
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 控制台面板 -->
+                <div class="console-panel">
+                    <h2><i class="fas fa-terminal"></i> 系统日志</h2>
+                    <div id="console" class="console">
+&gt; 系统初始化中...
+&gt; 正在检查后端连接...
+                    </div>
+                </div>
+
+                <!-- 事件列表 -->
+                <div class="events-panel">
+                    <h2><i class="fas fa-calendar-alt"></i> 我的日程安排</h2>
+                    <div id="events-container" class="events-list">
+                        <div class="event-card">
+                            <div class="event-title">欢迎使用语音助手</div>
+                            <div class="event-time">时间: --:-- 到 --:--</div>
+                            <div class="event-description">点击"开始语音对话"按钮添加您的第一个日程</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 使用说明 -->
+                <div class="instructions">
+                    <h2><i class="fas fa-info-circle"></i> 使用说明</h2>
+                    <ol>
+                        <li><strong>首次使用需要连接Google日历</strong>: 点击"连接Google日历"按钮，在新窗口中完成Google登录和多因子认证。</li>
+                        <li><strong>开始语音对话</strong>: 点击"开始语音对话"按钮，允许浏览器访问麦克风。</li>
+                        <li><strong>说出您的日程安排</strong>: 例如：<code>明天上午十点到十一点开会</code>、<code>今天下午两点到四点技术评审</code>、<code>后天上午九点到十二点项目讨论</code>。</li>
+                        <li><strong>系统会自动处理</strong>: 系统将解析语音、检查时间冲突，并在Google日历中创建日程。</li>
+                        <li><strong>查看结果</strong>: 创建的日程会显示在"我的日程安排"列表中，并可在Google Calendar中查看。</li>
+                    </ol>
+                    <p style="margin-top: 15px; color: #dc3545; font-weight: 600;">
+                        <i class="fas fa-exclamation-triangle"></i> 注意：首次登录Google账户时，请确保在新窗口中完成所有认证步骤。
+                    </p>
+                </div>
+            </div>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <p>语音驱动日程助手 &copy; 2024 | 使用Playwright进行Google日历自动化 | 作业项目</p>
+            <p style="margin-top: 5px; font-size: 0.8rem;">开发环境: Python Flask + Playwright + 语音识别</p>
+        </footer>
+    </div>
+
+    <!-- 隐藏的音频播放器 -->
+    <audio id="audio-player"></audio>
+
+    <script>
+        // 全局变量
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let currentSessionId = null;
+        let isRecording = false;
+
+        // DOM元素
+        const consoleEl = document.getElementById('console');
+        const eventsContainer = document.getElementById('events-container');
+        const recordingIndicator = document.getElementById('recording-indicator');
+        const audioPlayer = document.getElementById('audio-player');
+
+        // 状态元素
+        const statusBackend = document.getElementById('status-backend');
+        const statusVoice = document.getElementById('status-voice');
+        const statusCalendar = document.getElementById('status-calendar');
+        const statusBrowser = document.getElementById('status-browser');
+
+        // 按钮元素
+        const btnStartVoice = document.getElementById('btn-start-voice');
+        const btnLoginGoogle = document.getElementById('btn-login-google');
+        const btnRefresh = document.getElementById('btn-refresh');
+        const btnTestVoice = document.getElementById('btn-test-voice');
+
+        // ========== 工具函数 ==========
+        
+        /**
+         * 向控制台添加日志
+         * @param {string} message - 日志消息
+         * @param {string} type - 消息类型: info, success, error, warning
+         */
+        function log(message, type = 'info') {
+            const line = document.createElement('div');
+            line.className = 'console-line';
+            
+            // 添加前缀图标
+            let prefix = '>';
+            if (type === 'success') prefix = '✓';
+            else if (type === 'error') prefix = '✗';
+            else if (type === 'warning') prefix = '⚠';
+            
+            line.textContent = `${prefix} ${message}`;
+            consoleEl.appendChild(line);
+            
+            // 滚动到底部
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+            
+            // 同时输出到浏览器控制台
+            console.log(`${prefix} ${message}`);
+        }
+
+        /**
+         * 更新状态显示
+         * @param {HTMLElement} element - 状态元素
+         * @param {string} status - 状态: good, warning, error, unknown
+         * @param {string} text - 状态文本
+         */
+        function updateStatus(element, status, text) {
+            element.textContent = text;
+            element.className = 'status-value';
+            
+            switch(status) {
+                case 'good':
+                    element.classList.add('status-good');
+                    break;
+                case 'warning':
+                    element.classList.add('status-warning');
+                    break;
+                case 'error':
+                    element.classList.add('status-error');
+                    break;
+                default:
+                    element.classList.add('status-unknown');
+            }
+        }
+
+        /**
+         * 显示错误消息
+         * @param {string} message - 错误消息
+         */
+        function showError(message) {
+            alert(`错误: ${message}`);
+            log(message, 'error');
+        }
+
+        /**
+         * 显示成功消息
+         * @param {string} message - 成功消息
+         */
+        function showSuccess(message) {
+            log(message, 'success');
+        }
+
+        /**
+         * 播放音频
+         * @param {string} audioUrl - 音频URL或base64数据
+         */
+        function playAudio(audioUrl) {
+            if (!audioUrl) return;
+            
+            try {
+                audioPlayer.src = audioUrl;
+                audioPlayer.play().catch(e => {
+                    console.warn('音频播放失败:', e);
+                });
+            } catch (error) {
+                console.error('播放音频时出错:', error);
+            }
+        }
+
+        // ========== API调用函数 ==========
+
+        /**
+         * 检查后端服务状态
+         */
+        async function checkBackendStatus() {
+            try {
+                log('检查后端服务...');
+                const response = await fetch('/api/health');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'ok') {
+                    updateStatus(statusBackend, 'good', '运行正常');
+                    showSuccess(`后端服务正常: ${data.message}`);
+                    return true;
+                } else {
+                    updateStatus(statusBackend, 'error', '服务异常');
+                    log(`后端服务异常: ${data.message}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                updateStatus(statusBackend, 'error', '连接失败');
+                log(`无法连接到后端: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        /**
+         * 检查语音功能状态
+         */
+        async function checkVoiceStatus() {
+            try {
+                log('检查语音功能...');
+                const response = await fetch('/api/test-voice');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.status === 'ok') {
+                        updateStatus(statusVoice, 'good', '功能正常');
+                        log('语音功能检查完成', 'success');
+                    } else {
+                        updateStatus(statusVoice, 'warning', '模拟模式');
+                        log('语音功能使用模拟模式', 'warning');
+                    }
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                updateStatus(statusVoice, 'warning', '检查失败');
+                log('语音功能检查失败，使用模拟模式', 'warning');
+                return false;
+            }
+        }
+
+        /**
+         * 检查Google日历登录状态
+         */
+        async function checkCalendarStatus() {
+            try {
+                log('检查日历连接状态...');
+                const response = await fetch('/api/check-login');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success && data.is_logged_in) {
+                        updateStatus(statusCalendar, 'good', '已连接');
+                        log('Google日历连接正常', 'success');
+                    } else {
+                        updateStatus(statusCalendar, 'error', '未连接');
+                        log('Google日历未连接', 'warning');
+                    }
+                    return data.is_logged_in || false;
+                }
+                return false;
+            } catch (error) {
+                updateStatus(statusCalendar, 'error', '检查失败');
+                log('日历状态检查失败', 'error');
+                return false;
+            }
+        }
+
+        /**
+         * 检查浏览器支持
+         */
+        function checkBrowserSupport() {
+            log('检查浏览器支持...');
+            
+            // 检查MediaDevices API
+            const hasMediaDevices = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+            
+            // 检查Web Speech API
+            const hasSpeechRecognition = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+            
+            if (hasMediaDevices && hasSpeechRecognition) {
+                updateStatus(statusBrowser, 'good', '完全支持');
+                log('浏览器完全支持语音功能', 'success');
+                return true;
+            } else if (hasMediaDevices) {
+                updateStatus(statusBrowser, 'warning', '部分支持');
+                log('浏览器部分支持语音功能（无本地语音识别）', 'warning');
+                return true;
+            } else {
+                updateStatus(statusBrowser, 'error', '不支持');
+                log('浏览器不支持语音功能', 'error');
+                return false;
+            }
+        }
+
+        /**
+         * 开始语音会话
+         */
+        async function startVoiceSession() {
+            try {
+                log('开始语音会话...');
+                
+                const response = await fetch('/api/start-voice-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: `session_${Date.now()}`
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentSessionId = data.session_id;
+                    showSuccess(`语音会话开始: ${data.message}`);
+                    
+                    // 播放开场白
+                    if (data.audio_url) {
+                        playAudio(data.audio_url);
+                    }
+                    
+                    // 开始录音
+                    setTimeout(() => {
+                        startRecording();
+                    }, 2000); // 2秒后开始录音，让用户听到开场白
+                    
+                    return true;
+                } else {
+                    throw new Error(data.error || data.message);
+                }
+            } catch (error) {
+                showError(`启动语音会话失败: ${error.message}`);
+                return false;
+            }
+        }
+
+        /**
+         * 开始录音
+         */
+        async function startRecording() {
+            try {
+                log('请求麦克风权限...');
+                
+                // 请求麦克风权限
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 44100
+                    }
+                });
+                
+                // 创建MediaRecorder
+                const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+                    ? 'audio/webm;codecs=opus' 
+                    : 'audio/webm';
+                
+                mediaRecorder = new MediaRecorder(stream, { mimeType });
+                audioChunks = [];
+                
+                // 收集音频数据
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+                
+                // 录音结束处理
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: mimeType });
+                    await sendAudioToServer(audioBlob);
+                    
+                    // 停止所有音频轨道
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                // 开始录音
+                mediaRecorder.start();
+                isRecording = true;
+                
+                // 更新UI
+                btnStartVoice.innerHTML = '<i class="fas fa-stop-circle"></i> 停止录音';
+                btnStartVoice.classList.add('recording');
+                recordingIndicator.classList.remove('hidden');
+                
+                log('开始录音... 请说话', 'success');
+                
+                // 设置超时自动停止（10秒）
+                setTimeout(() => {
+                    if (isRecording) {
+                        stopRecording();
+                        log('录音超时自动停止', 'warning');
+                    }
+                }, 10000);
+                
+            } catch (error) {
+                showError(`录音失败: ${error.message}`);
+                isRecording = false;
+                resetRecordingUI();
+            }
+        }
+
+        /**
+         * 停止录音
+         */
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                resetRecordingUI();
+                log('录音结束，正在处理...', 'info');
+            }
+        }
+
+        /**
+         * 重置录音UI
+         */
+        function resetRecordingUI() {
+            btnStartVoice.innerHTML = '<i class="fas fa-microphone"></i> 开始语音对话';
+            btnStartVoice.classList.remove('recording');
+            recordingIndicator.classList.add('hidden');
+        }
+
+        /**
+         * 发送音频到服务器
+         * @param {Blob} audioBlob - 音频Blob对象
+         */
+        async function sendAudioToServer(audioBlob) {
+            try {
+                log('处理语音...');
+                
+                // 将Blob转换为base64
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    
+                    reader.onloadend = async () => {
+                        const base64Audio = reader.result;
+                        
+                        try {
+                            const response = await fetch('/api/process-voice', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    session_id: currentSessionId,
+                                    audio_data: base64Audio
+                                })
+                            });
+                            
+                            if (!response.ok) {
+                                throw new Error(`HTTP错误: ${response.status}`);
+                            }
+                            
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                showSuccess(`语音处理成功: ${data.message}`);
+                                
+                                // 播放回复语音
+                                if (data.audio_url) {
+                                    playAudio(data.audio_url);
+                                }
+                                
+                                // 刷新事件列表
+                                loadEvents();
+                                
+                                resolve(data);
+                            } else {
+                                showError(`语音处理失败: ${data.message}`);
+                                
+                                // 如果是时间冲突，播放提示
+                                if (data.audio_url) {
+                                    playAudio(data.audio_url);
+                                }
+                                
+                                reject(new Error(data.message));
+                            }
+                        } catch (error) {
+                            showError(`发送音频失败: ${error.message}`);
+                            reject(error);
+                        }
+                    };
+                    
+                    reader.onerror = () => {
+                        reject(new Error('读取音频文件失败'));
+                    };
+                    
+                    reader.readAsDataURL(audioBlob);
+                });
+            } catch (error) {
+                showError(`处理音频时出错: ${error.message}`);
+            }
+        }
+
+        /**
+         * 连接Google日历
+         */
+        async function connectGoogleCalendar() {
+            try {
+                log('连接Google日历...');
+                
+                const response = await fetch('/api/trigger-login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess(`Google日历连接: ${data.message}`);
+                    
+                    if (data.login_url) {
+                        // 在新窗口打开登录页面
+                        window.open(data.login_url, '_blank', 'width=800,height=600');
+                        log('请在新窗口中完成Google登录，完成后返回此页面', 'info');
+                    }
+                    
+                    return true;
+                } else {
+                    throw new Error(data.error || '连接失败');
+                }
+            } catch (error) {
+                showError(`连接Google日历失败: ${error.message}`);
+                return false;
+            }
+        }
+
+        /**
+         * 加载事件列表
+         */
+        async function loadEvents() {
+            try {
+                log('加载事件列表...');
+                
+                const response = await fetch('/api/get-events');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        renderEvents(data.events);
+                        log(`已加载 ${data.events.length} 个事件`, 'success');
+                    }
+                }
+            } catch (error) {
+                console.warn('加载事件失败:', error);
+            }
+        }
+
+        /**
+         * 渲染事件列表
+         * @param {Array} events - 事件数组
+         */
+        function renderEvents(events) {
+            if (!events || events.length === 0) {
+                eventsContainer.innerHTML = `
+                    <div class="event-card">
+                        <div class="event-title">暂无日程安排</div>
+                        <div class="event-time">时间: --:-- 到 --:--</div>
+                        <div class="event-description">点击"开始语音对话"按钮添加您的第一个日程</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            events.forEach(event => {
+                const time = new Date(event.created_at).toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                html += `
+                    <div class="event-card">
+                        <div class="event-title">${event.title || '未命名事件'}</div>
+                        <div class="event-time">时间: ${event.start_time || '--:--'} 到 ${event.end_time || '--:--'}</div>
+                        <div class="event-description">${event.description || '无描述'}</div>
+                        <div style="margin-top: 8px; font-size: 0.8rem; color: #6c757d;">添加于: ${time}</div>
+                    </div>
+                `;
+            });
+            
+            eventsContainer.innerHTML = html;
+        }
+
+        /**
+         * 测试语音识别
+         */
+        async function testVoiceRecognition() {
+            try {
+                log('测试语音识别...');
+                
+                // 模拟语音输入
+                const mockTexts = [
+                    "明天上午十点到十一点开会",
+                    "今天下午两点到四点技术评审",
+                    "后天上午九点到十二点项目讨论",
+                    "明天下午三点到五点半客户拜访"
+                ];
+                
+                const randomText = mockTexts[Math.floor(Math.random() * mockTexts.length)];
+                
+                // 模拟发送到后端
+                const response = await fetch('/api/process-voice', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: 'test_session',
+                        text: randomText
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showSuccess(`测试成功: ${data.message}`);
+                        loadEvents();
+                    } else {
+                        showError(`测试失败: ${data.message}`);
+                    }
+                }
+            } catch (error) {
+                showError(`测试语音识别失败: ${error.message}`);
+            }
+        }
+
+        /**
+         * 初始化系统
+         */
+        async function initializeSystem() {
+            log('系统初始化中...', 'info');
+            
+            // 并行检查所有状态
+            await Promise.all([
+                checkBackendStatus(),
+                checkVoiceStatus(),
+                checkCalendarStatus()
+            ]);
+            
+            // 检查浏览器支持（同步）
+            checkBrowserSupport();
+            
+            // 加载事件
+            loadEvents();
+            
+            log('系统初始化完成，可以开始使用', 'success');
+        }
+
+        // ========== 事件监听器 ==========
+
+        // 开始/停止语音对话按钮
+        btnStartVoice.addEventListener('click', async () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                // 先检查日历是否连接
+                const isLoggedIn = await checkCalendarStatus();
+                
+                if (!isLoggedIn) {
+                    const confirmLogin = confirm('需要先连接Google日历才能使用语音功能。是否现在连接？');
+                    if (confirmLogin) {
+                        await connectGoogleCalendar();
+                    }
+                    return;
+                }
+                
+                await startVoiceSession();
+            }
+        });
+
+        // 连接Google日历按钮
+        btnLoginGoogle.addEventListener('click', connectGoogleCalendar);
+
+        // 刷新按钮
+        btnRefresh.addEventListener('click', () => {
+            log('刷新系统状态...', 'info');
+            initializeSystem();
+        });
+
+        // 测试语音识别按钮
+        btnTestVoice.addEventListener('click', testVoiceRecognition);
+
+        // ========== 页面加载初始化 ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            log('页面加载完成，开始初始化系统...', 'info');
+            initializeSystem();
+        });
+
+        // ========== 浏览器标签页可见性变化 ==========
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isRecording) {
+                log('页面切换到后台，自动停止录音', 'warning');
+                stopRecording();
+            }
+        });
+
+        // ========== 键盘快捷键 ==========
+        document.addEventListener('keydown', (event) => {
+            // Ctrl+Enter: 开始/停止录音
+            if (event.ctrlKey && event.key === 'Enter') {
+                event.preventDefault();
+                btnStartVoice.click();
+            }
+            
+            // Ctrl+L: 连接Google日历
+            if (event.ctrlKey && event.key === 'l') {
+                event.preventDefault();
+                btnLoginGoogle.click();
+            }
+            
+            // Ctrl+R: 刷新
+            if (event.ctrlKey && event.key === 'r' && !event.shiftKey) {
+                event.preventDefault();
+                btnRefresh.click();
+            }
+            
+            // Ctrl+T: 测试
+            if (event.ctrlKey && event.key === 't') {
+                event.preventDefault();
+                btnTestVoice.click();
+            }
+        });
+
+        // 输出键盘快捷键提示
+        setTimeout(() => {
+            log('键盘快捷键: Ctrl+Enter=开始/停止录音, Ctrl+L=连接日历, Ctrl+R=刷新, Ctrl+T=测试', 'info');
+        }, 3000);
+    </script>
+</body>
+</html>
