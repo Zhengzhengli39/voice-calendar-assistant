@@ -221,6 +221,80 @@
             50% { opacity: 0.3; }
         }
 
+        /* 对话面板 */
+        .conversation-panel {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+        }
+
+        .conversation-panel h2 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .conversation {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            height: 300px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            line-height: 1.4;
+            position: relative;
+            word-wrap: break-word;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .message-user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message-assistant {
+            align-self: flex-start;
+            background: #e9ecef;
+            color: #333;
+            border-bottom-left-radius: 5px;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        .message-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            color: #6c757d;
+        }
+
+        .message-icon {
+            font-size: 0.9rem;
+        }
+
         /* 控制台面板 */
         .console-panel {
             grid-column: 1 / -1;
@@ -247,7 +321,7 @@
             font-family: 'Courier New', monospace;
             font-size: 0.95rem;
             line-height: 1.5;
-            height: 300px;
+            height: 200px;
             overflow-y: auto;
             white-space: pre-wrap;
             word-wrap: break-word;
@@ -370,6 +444,42 @@
             display: none;
         }
 
+        /* 语音输入区域 */
+        .voice-input {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .voice-input input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .voice-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .voice-input button {
+            padding: 12px 25px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .voice-input button:hover {
+            background: #5a67d8;
+        }
+
         /* 响应式调整 */
         @media (max-width: 768px) {
             .header {
@@ -392,11 +502,23 @@
                 padding: 12px 20px;
                 font-size: 1rem;
             }
+            
+            .conversation {
+                height: 250px;
+            }
+            
+            .message {
+                max-width: 90%;
+            }
         }
 
         /* 工具类 */
         .hidden {
             display: none !important;
+        }
+
+        .recording {
+            background: #dc3545 !important;
         }
     </style>
 </head>
@@ -461,6 +583,27 @@
                     </div>
                 </div>
 
+                <!-- 对话面板 -->
+                <div class="conversation-panel">
+                    <h2><i class="fas fa-comments"></i> 语音对话</h2>
+                    <div id="conversation" class="conversation">
+                        <div class="message message-assistant">
+                            <div class="message-content">您好！我是语音日程助手。我可以帮您添加、查看和管理Google日历中的日程。</div>
+                            <div class="message-status">
+                                <i class="fas fa-robot message-icon"></i>
+                                <span>语音助手</span>
+                                <span class="message-time">现在</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="voice-input">
+                        <input type="text" id="text-input" placeholder="输入您的日程安排，或点击上方按钮开始语音对话">
+                        <button id="btn-send-text">
+                            <i class="fas fa-paper-plane"></i> 发送
+                        </button>
+                    </div>
+                </div>
+
                 <!-- 控制台面板 -->
                 <div class="console-panel">
                     <h2><i class="fas fa-terminal"></i> 系统日志</h2>
@@ -515,12 +658,16 @@
         let audioChunks = [];
         let currentSessionId = null;
         let isRecording = false;
+        let audioStream = null;
 
         // DOM元素
         const consoleEl = document.getElementById('console');
+        const conversationEl = document.getElementById('conversation');
         const eventsContainer = document.getElementById('events-container');
         const recordingIndicator = document.getElementById('recording-indicator');
         const audioPlayer = document.getElementById('audio-player');
+        const textInput = document.getElementById('text-input');
+        const btnSendText = document.getElementById('btn-send-text');
 
         // 状态元素
         const statusBackend = document.getElementById('status-backend');
@@ -562,6 +709,50 @@
         }
 
         /**
+         * 向对话界面添加消息
+         * @param {string} content - 消息内容
+         * @param {string} sender - 发送者: user 或 assistant
+         * @param {string} statusText - 状态文本
+         * @param {string} icon - 图标类名
+         */
+        function addMessage(content, sender = 'assistant', statusText = null, icon = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message message-${sender}`;
+            
+            // 默认状态和图标
+            if (!statusText) {
+                statusText = sender === 'user' ? '您' : '语音助手';
+            }
+            
+            if (!icon) {
+                icon = sender === 'user' ? 'fa-user' : 'fa-robot';
+            }
+            
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('zh-CN', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">${content}</div>
+                <div class="message-status">
+                    <i class="fas ${icon} message-icon"></i>
+                    <span>${statusText}</span>
+                    <span class="message-time">${timeString}</span>
+                </div>
+            `;
+            
+            conversationEl.appendChild(messageDiv);
+            
+            // 滚动到底部
+            conversationEl.scrollTop = conversationEl.scrollHeight;
+            
+            return messageDiv;
+        }
+
+        /**
          * 更新状态显示
          * @param {HTMLElement} element - 状态元素
          * @param {string} status - 状态: good, warning, error, unknown
@@ -591,7 +782,8 @@
          * @param {string} message - 错误消息
          */
         function showError(message) {
-            alert(`错误: ${message}`);
+            // 在对话界面显示错误
+            addMessage(`错误: ${message}`, 'assistant', '系统错误', 'fa-exclamation-triangle');
             log(message, 'error');
         }
 
@@ -618,6 +810,16 @@
             } catch (error) {
                 console.error('播放音频时出错:', error);
             }
+        }
+
+        /**
+         * 重置录音UI
+         */
+        function resetRecordingUI() {
+            btnStartVoice.innerHTML = '<i class="fas fa-microphone"></i> 开始语音对话';
+            btnStartVoice.classList.remove('recording');
+            recordingIndicator.classList.add('hidden');
+            isRecording = false;
         }
 
         // ========== API调用函数 ==========
@@ -762,6 +964,11 @@
                     currentSessionId = data.session_id;
                     showSuccess(`语音会话开始: ${data.message}`);
                     
+                    // 添加欢迎消息到对话界面
+                    if (data.message) {
+                        addMessage(data.message, 'assistant');
+                    }
+                    
                     // 播放开场白
                     if (data.audio_url) {
                         playAudio(data.audio_url);
@@ -789,41 +996,144 @@
             try {
                 log('请求麦克风权限...');
                 
+                // 检查浏览器支持
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    showError('您的浏览器不支持麦克风访问');
+                    return;
+                }
+                
                 // 请求麦克风权限
-                const stream = await navigator.mediaDevices.getUserMedia({
+                const constraints = {
                     audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        sampleRate: 44100
+                        channelCount: 1,          // 单声道
+                        sampleRate: 16000,        // 采样率
+                        sampleSize: 16,           // 采样大小
+                        echoCancellation: true,   // 回声消除
+                        noiseSuppression: true,   // 噪声抑制
+                        autoGainControl: true     // 自动增益控制
                     }
-                });
+                };
+                
+                // 尝试不同的约束条件
+                const constraintsList = [
+                    constraints,
+                    { audio: true },  // 最简单的约束
+                    { 
+                        audio: {
+                            sampleRate: 44100,
+                            channelCount: 2
+                        }
+                    }
+                ];
+                
+                let stream = null;
+                let lastError = null;
+                
+                for (const constraint of constraintsList) {
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia(constraint);
+                        console.log('使用约束成功:', constraint);
+                        break;
+                    } catch (err) {
+                        lastError = err;
+                        console.warn('约束失败:', constraint, err);
+                    }
+                }
+                
+                if (!stream) {
+                    throw lastError || new Error('无法获取麦克风访问权限');
+                }
+                
+                audioStream = stream;
+                
+                // 检查音频轨道
+                const audioTracks = stream.getAudioTracks();
+                if (audioTracks.length === 0) {
+                    throw new Error('未找到音频轨道');
+                }
+                
+                console.log('音频轨道信息:', audioTracks[0].getSettings());
+                
+                // 确定支持的MIME类型
+                let mimeType = 'audio/webm';
+                const possibleTypes = [
+                    'audio/webm;codecs=opus',
+                    'audio/webm',
+                    'audio/ogg;codecs=opus',
+                    'audio/mp4'
+                ];
+                
+                for (const type of possibleTypes) {
+                    if (MediaRecorder.isTypeSupported(type)) {
+                        mimeType = type;
+                        console.log('选择MIME类型:', mimeType);
+                        break;
+                    }
+                }
                 
                 // 创建MediaRecorder
-                const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-                    ? 'audio/webm;codecs=opus' 
-                    : 'audio/webm';
-                
-                mediaRecorder = new MediaRecorder(stream, { mimeType });
+                const options = { mimeType };
+                mediaRecorder = new MediaRecorder(stream, options);
                 audioChunks = [];
                 
                 // 收集音频数据
                 mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
+                    if (event.data && event.data.size > 0) {
                         audioChunks.push(event.data);
+                        console.log('收到音频数据块:', event.data.size, '字节');
                     }
                 };
                 
                 // 录音结束处理
                 mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: mimeType });
-                    await sendAudioToServer(audioBlob);
+                    console.log('录音停止，数据块数量:', audioChunks.length);
+                    
+                    if (audioChunks.length > 0) {
+                        try {
+                            const audioBlob = new Blob(audioChunks, { type: mimeType });
+                            console.log('音频Blob大小:', audioBlob.size, '字节');
+                            
+                            await sendAudioToServer(audioBlob);
+                        } catch (error) {
+                            console.error('处理音频失败:', error);
+                            showError('处理录音失败: ' + error.message);
+                        }
+                    } else {
+                        showError('未录制到任何音频');
+                    }
                     
                     // 停止所有音频轨道
-                    stream.getTracks().forEach(track => track.stop());
+                    if (audioStream) {
+                        audioStream.getTracks().forEach(track => {
+                            track.stop();
+                            console.log('停止轨道:', track.label);
+                        });
+                        audioStream = null;
+                    }
+                    
+                    resetRecordingUI();
+                };
+                
+                // 处理录音错误
+                mediaRecorder.onerror = (event) => {
+                    console.error('MediaRecorder错误:', event);
+                    showError('录音设备错误: ' + (event.error?.message || '未知错误'));
+                    
+                    // 停止录音
+                    if (mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                    }
+                    
+                    // 停止轨道
+                    if (audioStream) {
+                        audioStream.getTracks().forEach(track => track.stop());
+                        audioStream = null;
+                    }
+                    resetRecordingUI();
                 };
                 
                 // 开始录音
-                mediaRecorder.start();
+                mediaRecorder.start(1000); // 每1秒收集一次数据
                 isRecording = true;
                 
                 // 更新UI
@@ -832,17 +1142,38 @@
                 recordingIndicator.classList.remove('hidden');
                 
                 log('开始录音... 请说话', 'success');
+                addMessage('正在聆听...请说出您的日程安排', 'assistant', '录音中', 'fa-microphone');
                 
-                // 设置超时自动停止（10秒）
+                // 设置超时自动停止（15秒）
                 setTimeout(() => {
                     if (isRecording) {
-                        stopRecording();
                         log('录音超时自动停止', 'warning');
+                        stopRecording();
                     }
-                }, 10000);
+                }, 15000);
                 
             } catch (error) {
-                showError(`录音失败: ${error.message}`);
+                console.error('录音失败:', error);
+                
+                let errorMessage = '录音失败: ';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMessage += '请允许麦克风权限访问';
+                    showError(errorMessage + '\n\n请按以下步骤操作：\n1. 检查浏览器地址栏右侧的摄像头/麦克风图标\n2. 点击图标并选择"允许"\n3. 刷新页面重试');
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage += '未找到麦克风设备';
+                    showError(errorMessage);
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage += '麦克风正被其他程序占用';
+                    showError(errorMessage + '\n\n请关闭其他使用麦克风的程序，如Zoom、微信等');
+                } else if (error.name === 'OverconstrainedError') {
+                    errorMessage += '无法满足音频参数要求';
+                    showError(errorMessage + '\n\n正在尝试简化参数...');
+                } else {
+                    errorMessage += error.message;
+                    showError(errorMessage);
+                }
+                
                 isRecording = false;
                 resetRecordingUI();
             }
@@ -853,38 +1184,50 @@
          */
         function stopRecording() {
             if (mediaRecorder && isRecording) {
-                mediaRecorder.stop();
+                console.log('手动停止录音');
+                
+                // 检查状态
+                if (mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                } else if (mediaRecorder.state === 'inactive') {
+                    console.log('MediaRecorder已处于inactive状态');
+                    resetRecordingUI();
+                }
+                
                 isRecording = false;
-                resetRecordingUI();
                 log('录音结束，正在处理...', 'info');
+                addMessage('录音结束，正在处理您的语音...', 'assistant', '处理中', 'fa-cog');
+            } else {
+                console.log('无活动录音可停止');
+                resetRecordingUI();
             }
         }
 
         /**
-         * 重置录音UI
-         */
-        function resetRecordingUI() {
-            btnStartVoice.innerHTML = '<i class="fas fa-microphone"></i> 开始语音对话';
-            btnStartVoice.classList.remove('recording');
-            recordingIndicator.classList.add('hidden');
-        }
-
-        /**
          * 发送音频到服务器
-         * @param {Blob} audioBlob - 音频Blob对象
          */
         async function sendAudioToServer(audioBlob) {
             try {
-                log('处理语音...');
+                log('正在处理语音...');
+                
+                // 检查文件大小
+                if (audioBlob.size === 0) {
+                    throw new Error('音频文件为空');
+                }
+                
+                console.log('准备发送音频，大小:', audioBlob.size, '字节');
                 
                 // 将Blob转换为base64
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     
                     reader.onloadend = async () => {
-                        const base64Audio = reader.result;
-                        
                         try {
+                            const base64Audio = reader.result;
+                            
+                            console.log('Base64数据长度:', base64Audio.length);
+                            
+                            // 发送到后端
                             const response = await fetch('/api/process-voice', {
                                 method: 'POST',
                                 headers: {
@@ -892,7 +1235,8 @@
                                 },
                                 body: JSON.stringify({
                                     session_id: currentSessionId,
-                                    audio_data: base64Audio
+                                    audio_data: base64Audio,
+                                    text: ''  // 也允许文本输入
                                 })
                             });
                             
@@ -901,9 +1245,13 @@
                             }
                             
                             const data = await response.json();
+                            console.log('后端响应:', data);
                             
                             if (data.success) {
-                                showSuccess(`语音处理成功: ${data.message}`);
+                                // 显示助手回复
+                                if (data.message) {
+                                    addMessage(data.message, 'assistant');
+                                }
                                 
                                 // 播放回复语音
                                 if (data.audio_url) {
@@ -925,19 +1273,89 @@
                                 reject(new Error(data.message));
                             }
                         } catch (error) {
+                            console.error('发送音频失败:', error);
                             showError(`发送音频失败: ${error.message}`);
                             reject(error);
                         }
                     };
                     
                     reader.onerror = () => {
-                        reject(new Error('读取音频文件失败'));
+                        const error = new Error('读取音频文件失败');
+                        console.error(error);
+                        showError(error.message);
+                        reject(error);
+                    };
+                    
+                    reader.onabort = () => {
+                        const error = new Error('读取音频文件被中止');
+                        console.error(error);
+                        showError(error.message);
+                        reject(error);
                     };
                     
                     reader.readAsDataURL(audioBlob);
                 });
             } catch (error) {
+                console.error('处理音频时出错:', error);
                 showError(`处理音频时出错: ${error.message}`);
+                throw error;
+            }
+        }
+
+        /**
+         * 发送文本消息
+         */
+        async function sendTextMessage() {
+            const text = textInput.value.trim();
+            if (!text) return;
+            
+            // 添加用户消息到对话界面
+            addMessage(text, 'user');
+            
+            // 清空输入框
+            textInput.value = '';
+            
+            try {
+                log('发送文本消息...');
+                
+                // 发送到后端
+                const response = await fetch('/api/process-voice', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: currentSessionId || `session_${Date.now()}`,
+                        text: text
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('后端响应:', data);
+                
+                if (data.success) {
+                    // 显示助手回复
+                    if (data.message) {
+                        addMessage(data.message, 'assistant');
+                    }
+                    
+                    // 播放回复语音
+                    if (data.audio_url) {
+                        playAudio(data.audio_url);
+                    }
+                    
+                    // 刷新事件列表
+                    loadEvents();
+                } else {
+                    showError(`处理失败: ${data.message}`);
+                }
+            } catch (error) {
+                console.error('发送文本失败:', error);
+                showError(`发送文本失败: ${error.message}`);
             }
         }
 
@@ -968,6 +1386,7 @@
                         // 在新窗口打开登录页面
                         window.open(data.login_url, '_blank', 'width=800,height=600');
                         log('请在新窗口中完成Google登录，完成后返回此页面', 'info');
+                        addMessage('请在新窗口中完成Google登录认证。完成认证后返回此页面并点击"刷新状态"按钮。', 'assistant');
                     }
                     
                     return true;
@@ -1058,6 +1477,9 @@
                 
                 const randomText = mockTexts[Math.floor(Math.random() * mockTexts.length)];
                 
+                // 添加测试消息
+                addMessage(`测试输入: ${randomText}`, 'user', '测试');
+                
                 // 模拟发送到后端
                 const response = await fetch('/api/process-voice', {
                     method: 'POST',
@@ -1075,6 +1497,9 @@
                     
                     if (data.success) {
                         showSuccess(`测试成功: ${data.message}`);
+                        if (data.message) {
+                            addMessage(data.message, 'assistant', '测试回复');
+                        }
                         loadEvents();
                     } else {
                         showError(`测试失败: ${data.message}`);
@@ -1135,16 +1560,30 @@
         // 刷新按钮
         btnRefresh.addEventListener('click', () => {
             log('刷新系统状态...', 'info');
+            addMessage('正在刷新系统状态...', 'assistant', '刷新中', 'fa-sync-alt');
             initializeSystem();
         });
 
         // 测试语音识别按钮
         btnTestVoice.addEventListener('click', testVoiceRecognition);
 
+        // 发送文本消息按钮
+        btnSendText.addEventListener('click', sendTextMessage);
+
+        // 文本输入框回车发送
+        textInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendTextMessage();
+            }
+        });
+
         // ========== 页面加载初始化 ==========
         document.addEventListener('DOMContentLoaded', () => {
             log('页面加载完成，开始初始化系统...', 'info');
             initializeSystem();
+            
+            // 聚焦到输入框
+            textInput.focus();
         });
 
         // ========== 浏览器标签页可见性变化 ==========
@@ -1179,6 +1618,11 @@
             if (event.ctrlKey && event.key === 't') {
                 event.preventDefault();
                 btnTestVoice.click();
+            }
+            
+            // 输入框焦点时，Esc清空输入框
+            if (event.key === 'Escape' && document.activeElement === textInput) {
+                textInput.value = '';
             }
         });
 
