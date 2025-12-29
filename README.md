@@ -52,19 +52,19 @@ source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
-
+```
 ### 3. Environment Setup
 ```bash
 Create a .env file in the project root:
 SECRET_KEY=your-secret-key-here
 DEBUG=True
-
+```
 ## Usage
 ### 1. Start the Application
 ```bash
 python app.py
 The application will start on http://localhost:5000
-
+```
 ### 2. First-Time Setup
 #### 1. Open http://localhost:5000 in your browser
 
@@ -147,7 +147,7 @@ The application uses Playwright's storage_state feature to persist login session
 #### 2."Playwright browser not found"
           ```bash
           playwright install chromium
-
+          ```
 #### 3."Authentication state not saving"
 
           Ensure storage/ directory exists and is writable
@@ -189,7 +189,7 @@ pip install pytest playwright pytest-playwright
 
 # Run tests
 pytest tests/
-
+```
 ### Code Style
 ```bash
 # Install formatting tools
@@ -200,7 +200,7 @@ black .
 
 # Check linting
 flake8 .
-
+```
 ### Adding Features
 
 Fork the repository
@@ -218,4 +218,5 @@ This project is for educational purposes. Use responsibly and in accordance with
 ##  Disclaimer
 
 This tool automates browser interactions with Google Calendar. Use at your own risk. The developers are not responsible for any issues caused by this software, including but not limited to duplicate events, missed appointments, or Google account restrictions.
+
 
