@@ -35,7 +35,7 @@ python --version
 
 # Install Playwright browsers
 playwright install chromium
-
+```
 ### 2. Clone and Setup
 ```bash
 git clone <repository-url>
@@ -218,3 +218,4 @@ This project is for educational purposes. Use responsibly and in accordance with
 ##  Disclaimer
 
 This tool automates browser interactions with Google Calendar. Use at your own risk. The developers are not responsible for any issues caused by this software, including but not limited to duplicate events, missed appointments, or Google account restrictions.
+
