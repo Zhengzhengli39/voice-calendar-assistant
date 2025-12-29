@@ -95,7 +95,7 @@ The application will start on http://localhost:5000
 "Set up a call with Sarah tomorrow morning at 9 for 30 minutes"
 
 ## Project Structure
-
+```bash
 voice-calendar-assistant/
 ├── app.py                 # Main Flask application
 ├── requirements.txt       # Python dependencies
@@ -112,7 +112,7 @@ voice-calendar-assistant/
 │   └── auth_manager.py   # Authentication state management
 └── storage/              # Persistent data storage
     └── auth_state.json   # Saved browser authentication
-
+```
 ## Authentication Management
 The application uses Playwright's storage_state feature to persist login sessions:
 
@@ -218,5 +218,6 @@ This project is for educational purposes. Use responsibly and in accordance with
 ##  Disclaimer
 
 This tool automates browser interactions with Google Calendar. Use at your own risk. The developers are not responsible for any issues caused by this software, including but not limited to duplicate events, missed appointments, or Google account restrictions.
+
 
 
