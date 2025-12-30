@@ -1,8 +1,0 @@
-Flask==2.3.3
-Flask-SocketIO==5.3.4
-Flask-CORS==4.0.0
-python-dotenv==1.0.0
-dateparser==1.1.8
-pytz==2023.3
-playwright==1.36.0
-pyttsx3
