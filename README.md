@@ -116,23 +116,23 @@ voice-calendar-assistant/
 ## Authentication Management
 The application uses Playwright's storage_state feature to persist login sessions:
 
-### 1. First Run: Browser opens for manual login
+#### 1. First Run: Browser opens for manual login
 
-### 2. Login State Saved: Authentication cookies stored in storage/auth_state.json
+#### 2. Login State Saved: Authentication cookies stored in storage/auth_state.json
 
-### 3. Subsequent Runs: Uses saved state to avoid re-login
+#### 3. Subsequent Runs: Uses saved state to avoid re-login
 
-### 4. State Expiry: If login expires, prompts for manual login again
+#### 4. State Expiry: If login expires, prompts for manual login again
 
 ## Known Limitations
 
-### 1. Google Security: Google may require re-authentication periodically
+#### 1. Google Security: Google may require re-authentication periodically
 
-### 2. Voice Recognition: Accuracy depends on microphone quality and clarity of speech
+#### 2. Voice Recognition: Accuracy depends on microphone quality and clarity of speech
 
-### 3. Time Zones: Currently uses UTC timezone - may need adjustment
+#### 3. Time Zones: Currently uses UTC timezone - may need adjustment
 
-### 4. Calendar Layout: Google Calendar UI changes may break Playwright selectors
+#### 4. Calendar Layout: Google Calendar UI changes may break Playwright selectors
 
 ## Troubleshooting
 
@@ -218,6 +218,7 @@ This project is for educational purposes. Use responsibly and in accordance with
 ##  Disclaimer
 
 This tool automates browser interactions with Google Calendar. Use at your own risk. The developers are not responsible for any issues caused by this software, including but not limited to duplicate events, missed appointments, or Google account restrictions.
+
 
 
 
