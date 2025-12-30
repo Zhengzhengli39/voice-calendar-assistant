@@ -145,9 +145,9 @@ The application uses Playwright's storage_state feature to persist login session
           Check browser settings for site permissions
 
 #### 2."Playwright browser not found"
-          ```bash
+          
           playwright install chromium
-          ```
+         
 #### 3."Authentication state not saving"
 
           Ensure storage/ directory exists and is writable
@@ -218,6 +218,7 @@ This project is for educational purposes. Use responsibly and in accordance with
 ##  Disclaimer
 
 This tool automates browser interactions with Google Calendar. Use at your own risk. The developers are not responsible for any issues caused by this software, including but not limited to duplicate events, missed appointments, or Google account restrictions.
+
 
 
 
